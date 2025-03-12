@@ -25,11 +25,6 @@ class User extends Authenticatable
         'password',
         'otp',
     ];
-
-    protected $attributes = [
-        'otp' => '0',
-    ];
-
     /**
      * The attributes that should be hidden for serialization.
      *
