@@ -31,4 +31,19 @@ class JWTToken
             return 'unauthorized';
         }
     }
+
+
+    public static function generateTokenForOTP($userEmail)
+    {
+        $key = env('JWT_KEY');
+        $payload = [
+            'iss' => 'laravel-token',
+            'aud' => 'laravel-token',
+            'iat' => time(),
+            'exp' => time() + (60 * 5),
+            'email' => $userEmail
+        ];
+
+        return JWT::encode($payload, $key, 'HS256');
+    }
 }

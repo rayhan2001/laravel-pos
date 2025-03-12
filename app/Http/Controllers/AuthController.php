@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Helper\JWTToken;
+use App\Mail\OTPMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -73,6 +75,71 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'User logged in successfully',
+            'token' => $token
+        ], 200);
+    }
+
+    public function sendOTP(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        $otp = mt_rand(100000, 999999);
+        Mail::to($user->email)->send(new OTPMail($otp));
+
+        $user->otp = $otp;
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'OTP sent successfully'
+        ], 200);
+    }
+
+    public function verifyOTP(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'otp' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        if ($user->otp != $request->otp) {
+            return response()->json(['error' => 'Invalid OTP'], 401);
+        }
+
+        if($user->updated_at->addMinutes(5) < now()) {
+            return response()->json(['error' => 'OTP expired'], 401);
+        }
+
+        $token = JWTToken::generateTokenForOTP($user->email);
+
+        $user->otp = null;
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'OTP verified successfully',
             'token' => $token
         ], 200);
     }
