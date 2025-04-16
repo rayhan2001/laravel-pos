@@ -143,4 +143,27 @@ class AuthController extends Controller
             'token' => $token
         ], 200);
     }
+
+    public function ResetPass(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 422);
+        }
+
+        $email = $request->header('email');
+        $password = Hash::make($request->password);
+
+        $user = User::where('email', $email)->first();
+        $user->password = $password;
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Password reset successfully'
+        ], 200);
+    }
 }
